@@ -13,20 +13,6 @@ static_imgs = 'images'
 
 # control codes: http://stackoverflow.com/a/12586667  # delete previous line print(CURSOR_UP_ONE + ERASE_LINE)
 
-""" Pulling from the pages """
-def get_day(url, session):
-    """ Downloads the html file at url including images """
-    soup = bs(session.get(url).text, PARSER)
-    imgs = get_and_replace_img_urls(soup)
-    
-    day_name = '%s_%s' % (soup.find_all(id='post_header_day_no')[0].text, soup.find_all(id='post_header_date')[0].text)
-    dump_file('%s_%s.html' % (day_name, url2filename(url)), soup.prettify())  # change this to use the day number, not the hashed value
-    
-    for img in imgs:  
-        download_img(img, session)
-        
-    if verbose: print('done - %s' % soup.title.text)
-    
 """ Getting URLs """
     
 def find_active_years(soup, session):
@@ -85,7 +71,6 @@ def find_active_months(soup):
 def get_soup(url, session):
     """ Performs error checking before returning the 
         soup object of the given URL """
-        
     
     while( True ):
         sys.stdout.write('GET: %s' % url)
@@ -149,25 +134,7 @@ def find_day_urls(soup, session):
     
     
 """ Helper functions """
- 
-def download_img(imgurl, session):
-    """ Downloads the file at imgurl and saves to filesystem """
-    # using requests to dl images: http://stackoverflow.com/a/13137873
-    
-    # check it's a relatively legitimate URL
-    url = urlparse(imgurl)
-    if url.scheme == '':
-        imgurl = 'http:%s' % imgurl
-    
-    fpath = os.path.join(static_imgs, url2filename(imgurl))
-    if not os.path.exists(fpath):
-        if verbose: print('downloading %s' % url2filename(imgurl))
-        r = session.get(imgurl, stream=True)
-        if r.status_code == 200:
-                with open(fpath, 'wb') as f:
-                    r.raw.decode_content = True
-                    shutil.copyfileobj(r.raw, f)
-        
+
 def relative_html_url(img_name, directory):
     """ Returns the relative URL of a file """
     # commonprefix http://stackoverflow.com/a/7288019
