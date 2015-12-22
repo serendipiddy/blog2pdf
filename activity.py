@@ -4,7 +4,7 @@ import re
 
 
 # regex for weekdays: http://stackoverflow.com/a/21709043
-date_regex = re.compile(r'(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day, \d{2} (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}')
+date_regex = re.compile(r'(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day, \d{1,2} (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}')
 date_format = '%A, %d %b %Y'  # Monday, 01 Dec 2014 ## DAY OF MONTH MUST BE ZERO PADDED the read HTML's aren't
 month_labels = ('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec')
 
@@ -181,11 +181,11 @@ class Year(object):
 
 def check_day_parameters(title, day_num, likes, date, link):
     """ Checks parameters for creating a day """
-    assert type(title) is str          # : print('invalid title')
+    assert type(title) is str or type(date) is unicode         # : print('invalid title')
     assert type(day_num) is int        # : print('invalid day number')
     assert type(likes) is int          # : print('invalid likes number')
-    assert type(link) is str           # : print('invalid link')
-    assert type(date) is str           # : print('invalid date type')
+    assert type(link) is str or type(date) is unicode          # : print('invalid link')
+    assert type(date) is str or type(date) is unicode          # : print('invalid date type')
     assert date_regex.match(date) is not None  # : print('invalid date format: %s' % date)
     
 class Day(object):
@@ -212,7 +212,7 @@ class Day(object):
         
     def add_post(self, post):
         """ Add a post  to this day """
-        assert type(post) is Post
+        assert issubclass(type(post), Post)
         
         # audit post, extracting hashtags and usertags
         for tag in post.hashtags:

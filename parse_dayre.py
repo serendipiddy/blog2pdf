@@ -7,6 +7,7 @@ import os
 
 PARSER = 'lxml'
 youtube_link = 'youtu.be/'
+date_format = '%A, %d %b %Y'  # Monday, 01 Dec 2014
 
 
 """ External functions, pass in whole HTML document """
@@ -22,36 +23,64 @@ def get_user(soup_user, soup_followers, soup_following):
     
 def parse_day_page(soup):
     """ Parse the page for a day, returning the Day and Post objects """
+    # title, day_num, likes, date, link
+    day_data = dict()
+    meta = soup.find_all(id='post_meta')
+    if meta:
+        meta = meta[0]
+        
+        title = find_with_attr(soup, 'meta', 'property', 'og:title').get('content')
+        day_num = meta.find_all(id='post_header_day_no')[0].text.split(' ')[-1]
+        likes = meta.find_all(class_='ajax_like_count')[0].text
+        date = meta.find_all(id='post_header_date')[0].text
+        link = find_with_attr(soup, 'meta', 'property', 'og:url').get('content')
+        
+        day_data['title'] = title
+        day_data['day_num'] = int( day_num )
+        day_data['likes'] = int( likes )
+        day_data['date'] = date
+        day_data['link'] = link
+
     container = soup.find_all(id='post_main_container')[0]
     
     # get p tags, each representing a post
     posts = list()
+    
+    # remove the empty children
+    for child in container.children:
+        if unicode(child) == u'\n':
+            child.extract()
+    
     for p in container.find_all('p'):
-        # skip the video compatibility message, which isn't a post
         if p.get('class') is not None:
-            if p.get('class') == 'vjs-no-hs':
+            # skip the video compatibility message, which isn't a post
+            if u'vjs-no-js' in p.get('class'):
                 continue  
         
-        # post type is determined by the previous element
-        prev = get_prev_elem(p).name 
-        
-        # common line of execution here, so avoids doing it in all the subsequent function calls
         replace_emoji(p)
         
-        if prev == 'p' or prev == 'br':  # this is a text or quote post
+        # post's type is determined by the previous element
+        
+        prev = p.previous_sibling
+        
+        # common line of execution here, so avoids doing it in all the subsequent function calls
+        if prev == None or prev.name == 'p':  # this is a text or quote post
             if p.get('class') is not None and p.get('class')[0] == 'quotation':
                 posts.append(parse_quote(p))
             else:
                 posts.append(parse_text(p))
-        elif prev == 'img':     # this is a sticker or image post
+            continue
+        elif 'action_image' in prev.get('class'):     # this is an image post
             posts.append(parse_image(p))
-            # use parent to check
-        elif prev == 'div':     # this is a location, (class is 'map_label_address' with text 'address')
+        elif 'action_sticker' in prev.get('class'):     # this is a sticker
+            posts.append(parse_sticker(p))
+        elif 'action_location' in prev.get('class'):     # this is a location, (class is 'map_label_address' with text 'address')
             posts.append(parse_location(p))
-        elif prev == 'a':       # is a user video
-            posts.append(parse_video(p))
-        elif prev == 'iframe':  # is a YouTube video
-            posts.append(parse_youtube(p))
+        elif 'action_video' in prev.get('class'):       # is a user video or youtube
+            if prev.video is not None:  # difference between video and youtube
+                posts.append(parse_video(p))
+            else:
+                posts.append(parse_youtube(p))
     
     # discover comments
     comment_container = soup.find_all(id='comments_list')[0]
@@ -60,7 +89,9 @@ def parse_day_page(soup):
     for c in comment_container.find_all(class_='comment'):
         comments.append(parse_comment(c))
         
-    return {'posts': posts, 'comments': comments}
+    rv = {'posts': posts, 'comments': comments}
+    rv.update(day_data)
+    return rv
     
     
 """ Internal functions, pass in a section of an HTML document """
@@ -116,7 +147,7 @@ def parse_text(soup):
 
 def parse_location(soup):
     """ Given the text of a location post returns a Location object"""
-    map_label = get_prev_elem(soup).parent
+    map_label = soup.previous_sibling.find_all(class_='map_label')[0]
     name = map_label.find_all(class_='map_label_name')[0].text.strip()
     address = map_label.find_all(class_='map_label_address')[0].text.strip()
     coo = map_label.parent.iframe.get('src').split('/')[-2:]
@@ -124,17 +155,17 @@ def parse_location(soup):
     return post.Location(soup.text, name, address, {'lat':float(coo[0]),'long':float(coo[1])})
     
 def parse_video(soup):
-    actual_link = get_prev_elem(soup).parent.parent.get('src')
-    preview_image = get_prev_elem(soup).parent.parent.parent.get('poster')
+    actual_link = soup.previous_sibling.source.get('src')
+    preview_image = soup.previous_sibling.video.get('poster')
     return post.User_video(soup.text, preview_image, actual_link)
     
 def parse_youtube(soup):
-    embed_url =  urlparse.urlparse(get_prev_elem(soup).get('src'))
+    embed_url =  urlparse.urlparse(soup.previous_sibling.div.iframe.get('src'))
     video_id = '%s%s' % (youtube_link, os.path.basename(embed_url.path))
     return post.YouTube_video(soup.text, video_id)
     
 def parse_sticker(soup):
-    link  = get_prev_elem(soup).get('src')
+    link  = soup.previous_sibling.img.get('src')
     return post.Sticker(soup.text, link)
     
 def parse_quote(soup):
@@ -144,19 +175,25 @@ def parse_image(soup):
     """ Given the text of an image post, produces an Image object """
     
     # extract URL and text
-    link = get_prev_elem(soup).get('src')
+    the_div = soup.previous_sibling
+    link = the_div.img.get('src')
     text = soup.text
+    location = None
     
-    return post.Image(text, link)
+    # check for location
+    if len(the_div.find_all(class_='location_caption')) > 0:
+        location = the_div.find_all(class_='location_caption')[0].text
+    
+    return post.Image(text, link, location)
     
 """ Helper functions """
     
-def get_prev_elem(soup):
-    """ Skips the newline chars to get to the previous element """
-    s = soup.previous_element
-    while s.name is None:
-        s = s.previous_element
-    return s
+# def get_prev_elem(soup):
+    # """ Skips the newline chars to get to the previous element """
+    # s = soup.previous_element
+    # while s.name is None:
+        # s = s.previous_element
+    # return s
     
 def find_with_attr(soup, tag, attr, val):
     """ Returns the first occurrence of a tag 'tag' with the attribute 'attr' of value 'val' """

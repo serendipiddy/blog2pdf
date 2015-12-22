@@ -50,9 +50,10 @@ class Quote(Post):
         super(self.__class__, self).__init__(text)
 
 class Image(Post):
-    def __init__(self, text, link):
+    def __init__(self, text, link, location=None):
         super(self.__class__, self).__init__(text)
         self.link = link
+        self.location = location
 
 class Location(Post):
     def __init__(self, text, name, address, coordinates):
