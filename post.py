@@ -22,6 +22,9 @@ class Post(object):
     def __str__(self):
         text_length = min(len(self.text), 20)
         return '%s: %s' % (type(self).__name__, self.text[:text_length])
+        
+    def __repr__(self):
+        return self.__str__()
     
 class Comment(object):
     def __init__(self, username, text, avatar_link):
