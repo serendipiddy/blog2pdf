@@ -26,6 +26,7 @@ import cmd
     # get_data(parser.username)
     
 def get_data(username):
+    print('This will take a long time ~~')
     print('Initiating spider')
     try:
         # create dayre_puller
@@ -98,7 +99,7 @@ class d2pcli(cmd.Cmd):
     def do_autoget(self, line):
         """ auto_get -- Finds and pulls all dayre data for currently set username, saving images and dumping a data file """
         if not self.check_user(): return
-        get_data(self.username)
+        self.data = get_data(self.username)
         
     def do_set(self, username):
         """ set -- Selects the given user """
@@ -119,23 +120,39 @@ class d2pcli(cmd.Cmd):
         """ Saves the currently loaded user's data to file. """
         if not self.check_user(): return
         filename = '%s_data.pickle' % self.username
-        save_user_data(user, filename)
+        save_user_data(self.data, filename)
         print ('save complete')
         
     def do_summary(self, line):
         """ Prints a summary of user """
         if not self.check_user(): return
-        if self.data == '':
-            print('no data')
-            return
+        if not self.check_data(): return
         d = self.data
-        return 'Name: %s\nURL: %s\nBio: %s\n%s ' % (d['name'], d['url'], d['bio'], d['activity'])
+        print('Name: %s\nURL: %s\nBio: %s\n%s ' % (d['name'], d['url'], d['bio'], d['activity']))
+        
+    def do_update(self, line):
+        """ Updates the stored data with recent posts """
+        if not self.check_user(): return
+        if not self.check_data(): return
+        
+        recent_day = most_recent_day(self.data['activity'])
+        
+        # TODO
+        """ This function can be used with periodic saving to tmp while pulling data to avoid errors ruining an autoget() download """
+        print("Coming soon..")
         
     def do_lastday(self, line):
         """ Prints the most recent day in stored data """
         if not self.check_user(): return
         if not self.check_data(): return
-        print(most_recent_day(self.data['activity']))
+        day=most_recent_day(self.data['activity'])
+        print("Day #%d, %d" % (day[1], day[0]))
+        
+    def do_getday(self, day):
+        """ Accepts "YYYY DDD" index of a day, prints that day's data and holds """
+        # TODO checks with regex for a year and a day '\d{4} \d{1,2,3}'
+        # if 
+        return
         
     def do_tex(self, line):
         """ Exports the selected data to a tex file """
