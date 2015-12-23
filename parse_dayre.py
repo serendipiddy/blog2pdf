@@ -149,7 +149,11 @@ def parse_location(soup):
     """ Given the text of a location post returns a Location object"""
     map_label = soup.previous_sibling.find_all(class_='map_label')[0]
     name = map_label.find_all(class_='map_label_name')[0].text.strip()
-    address = map_label.find_all(class_='map_label_address')[0].text.strip()
+    address = map_label.find_all(class_='map_label_address')
+    if len(address) > 0:
+        address = address[0].text.strip()
+    else:
+        address = ''
     coo = map_label.parent.iframe.get('src').split('/')[-2:]
     
     return post.Location(soup.text, name, address, {'lat':float(coo[0]),'long':float(coo[1])})

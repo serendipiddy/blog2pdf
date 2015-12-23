@@ -135,11 +135,15 @@ class dayre_spider(object):
             for tag in img_tags:
                 src = tag[u'src']
                 self.image_urls.add(src)
-                if u'http://cdnjs.cloudflare.com/ajax/libs/twemoji/1.4.1/36x36/1f1ef-1f1f4.png' == src: print(url)
+                # if u'http://cdnjs.cloudflare.com/ajax/libs/twemoji/1.4.1/36x36/1f1ef-1f1f4.png' == src: print(url)  # TODO: where is this image coming from?
                 tag[u'src'] = pull.url2filename(src)
             
             # parse page
-            day_page = parser.parse_day_page(day_soup)
+            try:
+                day_page = parser.parse_day_page(day_soup)
+            except Exception as e:
+                print("\nError Occurred Parsing: %s\nDay url:%s\nContinuing from next post" % (e.message, url))
+                continue
             today = activity.Day(day_page['title'], day_page['day_num'], day_page['likes'], day_page['date'], day_page['link'])
             
             for post in day_page['posts']:

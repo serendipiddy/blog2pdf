@@ -71,8 +71,8 @@ def search_for_new_comments(activity):
     # TODO
     return
     
-def get_new_comments(activity, year, day):
-    """ Searches the selected day for new comments, retrieving any """
+def update_day(activity, year, day):
+    """ Replaces the existing given day with the latest version """
     # TODO
     return
     
