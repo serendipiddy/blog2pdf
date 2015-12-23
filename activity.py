@@ -1,6 +1,7 @@
 from post import Post, Comment
 from datetime import datetime
 import re
+import sys
 
 
 # regex for weekdays: http://stackoverflow.com/a/21709043
@@ -31,7 +32,14 @@ class Activity(object):
         
     def __repr__(self):
         return self.__str__()
-        
+    
+    def all_days(self):
+        days = list()
+        for y in sorted(self.years.keys()):
+            for d in sorted(self.years[y].days.keys()):
+                days.append(self.years[y].days[d])
+        return days
+    
     def add_post(self, day, post):
         """ Add a post to the given day """
         assert type(day) == Day

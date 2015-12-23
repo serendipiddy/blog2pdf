@@ -135,6 +135,7 @@ class dayre_spider(object):
             for tag in img_tags:
                 src = tag[u'src']
                 self.image_urls.add(src)
+                if u'http://cdnjs.cloudflare.com/ajax/libs/twemoji/1.4.1/36x36/1f1ef-1f1f4.png' == src: print(url)
                 tag[u'src'] = pull.url2filename(src)
             
             # parse page
@@ -173,6 +174,7 @@ class dayre_spider(object):
         for imgurl in urls:
             sys.stdout.write('%6d/%d imgs ' % (i+1, len(urls)))
             sys.stdout.flush()
+            i += 1
             
             # check it's a relatively legitimate URL
             url = urlparse.urlparse(imgurl)
@@ -187,20 +189,24 @@ class dayre_spider(object):
                     # Avoid connection error ending everything
                     try:
                         r = self.session.get(imgurl, stream=True)
+                        sys.stdout.write(' -- SUCCESS\n')
                         break
                     except requests.exceptions.ConnectionError as e:
                         print('\nConnection Error: %s' % e)
                         print('Refreshing session..')
                         self.session = requests.Session()
                         
-                sys.stdout.write(' -- SUCCESS\n')
-                sys.stdout.flush()
-                
                 if r.status_code == 200:
                     with open(fpath, 'wb') as f:
                         r.raw.decode_content = True
                         shutil.copyfileobj(r.raw, f)
-              
+            else: 
+                sys.stdout.write(' -- Exists\r')
+                sys.stdout.flush()
+                
+        sys.stdout.write('\n')
+        sys.stdout.flush()
+        
     def get_userdata(self):
         return self.userdata
         
