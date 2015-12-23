@@ -64,7 +64,7 @@ def find_active_months(soup):
             month = tag.a.stripped_strings.next()
             url = tag.a[u'href']
             links.append((month, url))
-            break  # for testing
+            # break  # for testing
     
     return links
     

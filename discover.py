@@ -215,6 +215,7 @@ class UserNotFoundError(Exception):
         self.status_code = status_code
         self.username = username
         self.title = title
+        self.message = '%d: User "%s" not found' % (status_code, username)
         
     def __str__(self):
         return "UserNotFound: '%s' (%d) %s" % (self.username, self.status_code, self.title)

@@ -7,7 +7,7 @@ usertag_re = r'@(\w+)'
 class Post(object):
     def __init__(self, text):
         assert type(text) is str or type(text) is unicode
-        assert len(text.strip()) < 500
+        # assert len(text.strip()) < 500
         self.text = text.strip()
         
         self.hashtags = set()
