@@ -1,17 +1,17 @@
 import requests
 from bs4 import BeautifulSoup as bs
 import pulldata as pull
-import parse_dayre as parser
+import parse_blog as parser
 import activity
 import sys
 import os
 import urlparse, shutil
 
-dayre_url = "https://dayre.me/"
+blog_url = "https://dayre.me/"
 PARSER = 'lxml'
 static_imgs = 'images2'
 
-class dayre_spider(object):
+class blog_spider(object):
     
     def __init__(self, username, dummy = False):
         assert type(username) is str or type(username) is unicode
@@ -23,7 +23,7 @@ class dayre_spider(object):
         self.day_urls = set()  # day name -- (yyyy_ddd) -> url
         self.userdata['activity'] = activity.Activity()
         
-        url = "%s%s" % (dayre_url, username)
+        url = "%s%s" % (blog_url, username)
         
         if dummy: return 
         
@@ -50,7 +50,7 @@ class dayre_spider(object):
             raise UserNotFoundError(r.status_code, username, soup.title)
             
     def __str__(self):
-        return 'dayre_puller for %s' % self.username
+        return 'blog_puller for %s' % self.username
     
     def process_profile(self):
         """ Reads the profile and follow data of the user
@@ -65,8 +65,8 @@ class dayre_spider(object):
         self.image_urls.add(avatar_url)
         self.image_urls.add(cover_url)
         
-        fers_url = '%s%s/followers?id=%s' % (dayre_url, self.userdata['username'], self.userdata['user_id'])
-        fing_url = '%s%s/following?id=%s' % (dayre_url, self.userdata['username'], self.userdata['user_id'])
+        fers_url = '%s%s/followers?id=%s' % (blog_url, self.userdata['username'], self.userdata['user_id'])
+        fing_url = '%s%s/following?id=%s' % (blog_url, self.userdata['username'], self.userdata['user_id'])
         followers_soup = pull.get_soup(fers_url, self.session)
         following_soup = pull.get_soup(fing_url, self.session)
             

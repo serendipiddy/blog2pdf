@@ -4,8 +4,8 @@ from urlparse import urlparse
 
 # import multiprocessing
 
-dayre_url = "https://dayre.me/"
-dayre_first_year = 2013
+blog_url = "https://dayre.me/"
+blog_first_year = 2013
 verbose = False
 PARSER = 'lxml'
 
@@ -16,7 +16,7 @@ static_imgs = 'images'
 """ Getting URLs """
     
 def find_active_years(soup, session):
-    """ Finds years with activity between most recent post and the first year of Dayre 
+    """ Finds years with activity between most recent post and the first year of blog 
         Doesn't add the current year, only the rest. """
     year_urls = list()
     year_ = soup.find_all(id='year')
