@@ -13,10 +13,9 @@ image_width = '200px'
 def data2tex(userdata, filename):
     """ Entrypoint. Converts saved user data to tex """
     
-    doc = Document()
-    doc.append(command('documentclass',arguments='article',options='[10pt,a4paper,twocolumn]'))
+    doc = Document(documentclass=Command('documentclass',arguments='article',options='10pt,a4paper,twocolumn'))
     doc.packages.append(Package('float'))
-    doc.packages.append(Package('parskip'), options=['parfill'])
+    doc.packages.append(Package('parskip', options=['parfill']))
     export_user(doc, userdata)
     export_activity(doc, userdata)
     doc.generate_tex(filename)

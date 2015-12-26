@@ -24,16 +24,16 @@ python blog2pdf.py
 (cmd) load             # loads a previously saved user data file
 (cmd) getday YYYY DDD  # prints a summary of the given day's data
 (cmd) select           # (incomplete) being interactive selection of posts for exporting to PDF
-(cmd) analyse          # (incomplete) examines the loaded current users data
+(cmd) analyse          # (unimplemented) examines the loaded current users data
 (cmd) xml              # (incomplete) exports data to XML file
 ```
 
 ### TODO list:
-* Support for CJK characters in latex
+* Support for CJK characters in latex (perhaps 
 * General unicode support
 * [Emoji support in latex](https://github.com/alecjacobson/coloremoji.sty)
-* XML export option
-* Include more day and post information. Eg. day headers and comments
 * Correcting images without extensions on server
-* More professional default layout (not starting new column inappropriately)
+* Include more day and post information. Eg. day headers and comments
+* More professional default layout (not starting new column inappropriately, [titles centered](http://tex.stackexchange.com/a/8547) etc )
 * Other layout options
+* XML export option
