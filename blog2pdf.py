@@ -221,7 +221,7 @@ class d2pcli(cmd.Cmd):
     def do_tex(self, line):
         """ Exports the selected data to a tex file """
         print('Experimental..!')
-        data2tex(self.data, 'output')
+        data2tex(self.data, '%s_out' % self.data['username'])
         return
         
     def do_EOF(self, line):  # C-d exits

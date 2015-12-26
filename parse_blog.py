@@ -30,7 +30,7 @@ def parse_day_page(soup):
         meta = meta[0]
         
         if not soup.find_all(id='post_header_title'): 
-            title = find_with_attr(soup, 'meta', 'property', 'og:title').get('content')
+            title = ''  # find_with_attr(soup, 'meta', 'property', 'og:title').get('content')
         else:
             title = soup.find_all(id='post_header_title')[0].text
         day_num = meta.find_all(id='post_header_day_no')[0].text.split(' ')[-1]
