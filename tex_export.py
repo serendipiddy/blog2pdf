@@ -81,8 +81,10 @@ def export_day(doc, day, username):
     else:
         daytitle = 'Day %d - %s'  % (day.day_num, day.title)
     
+    ## \newpage forces new column
+    
     with doc.create(Subsection(daytitle, numbering=False )):
-        doc.append(bold( day.date.strftime('%A, %d %b %Y') ))
+        doc.append(bold( day.date.strftime('%A, %d %b %Y\n') ))
         for p in day.posts:
             export_post(doc, p)
     # doc.append(day)
