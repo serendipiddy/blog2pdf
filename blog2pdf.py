@@ -5,7 +5,12 @@ import parse_blog
 from discover import *
 import pickle
 import cmd
-
+import re
+import datetime
+import post
+import textwrap
+import xml_export
+from tex_export import data2tex
 
 # def get_args():
     # parser = argparse.ArgumentParser(description='Tool for creating a PDF from a user\'s Blog data.')
@@ -77,12 +82,43 @@ def update_day(activity, year, day):
     # TODO
     return
     
+def get_day(activity, year, day):
+    """ Prints the selected day's text to the CLI """
+    if year not in activity.years:
+      print('year %d not found' % year)
+      return
+    y = activity.years[year]
+    if day not in y.days:
+      print('day %d not found' % day)
+      return
+    
+    return y.days[day]
+    
+def print_day(day):
+    assert type(day) == activity.Day
+    
+    print( 'Title: %s' % day.title )
+    # print( 'Date: %s' % datetime.strftime(day.date) )
+    print( 'Date: %s' % day.date )
+    print( 'Link: %s' % day.link )
+    print( '%d Likes %d posts %d comments\n' % (day.likes, len(day.posts), len(day.comments)) )
+    
+    for post in day.posts:
+        print ( post.text )
+        
+def print_comments(day):
+    assert type(day) == activity.Day
+    
+    print("Comments for day %d" % day.day_num)
+    for comment in day.comments:
+        print ( 'By: @%s\n%s\n' % (comment.username, '\n'.join(textwrap.wrap(comment.text, 80)) ) )
     
 class d2pcli(cmd.Cmd):
     def __init__(self):
         cmd.Cmd.__init__(self)
         self.data = ''
         self.username = ''
+        self.selectedday = ''
         
     def check_user(self):
         if self.username == '':
@@ -119,6 +155,7 @@ class d2pcli(cmd.Cmd):
     def do_save(self, line):
         """ Saves the currently loaded user's data to file. """
         if not self.check_user(): return
+        if not self.check_data(): return
         filename = '%s_data.pickle' % self.username
         save_user_data(self.data, filename)
         print ('save complete')
@@ -151,12 +188,41 @@ class d2pcli(cmd.Cmd):
     def do_getday(self, day):
         """ Accepts "YYYY DDD" index of a day, prints that day's data and holds """
         # TODO checks with regex for a year and a day '\d{4} \d{1,2,3}'
-        # if 
+        
+        if re.search(r'(\d{4}) (\d{2})', day) is None:
+            print('invalid format. use "YYYY DDD"')
+        year = int(re.search(r'(\d{4}) (\d{2})', day).group(1))
+        day = int(re.search(r'(\d{4}) (\d{1,3})', day).group(2))
+        
+        self.selectedday = get_day(self.data['activity'], year, day)
+        
         return
+        
+    def do_printday(self, line):
+        if self.selectedday == '':
+            print('no day selected')
+        else:
+            print_day(self.selectedday)
+        return
+        
+    def do_printcomments(self, line):
+        if self.selectedday == '':
+            print('no day selected')
+        else:
+            print_comments(self.selectedday)
+        return
+        
+    def do_xml(self, line):
+        if not self.check_user(): return
+        if not self.check_data(): return
+        xml_export.data2xml(self.data)
+        
         
     def do_tex(self, line):
         """ Exports the selected data to a tex file """
-        print('Coming soon..!')
+        print('Experimental..!')
+        data2tex(self.data, 'output')
+        return
         
     def do_EOF(self, line):  # C-d exits
         print('exiting..')

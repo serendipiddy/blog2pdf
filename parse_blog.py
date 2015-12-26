@@ -29,7 +29,10 @@ def parse_day_page(soup):
     if meta:
         meta = meta[0]
         
-        title = find_with_attr(soup, 'meta', 'property', 'og:title').get('content')
+        if not soup.find_all(id='post_header_title'): 
+            title = find_with_attr(soup, 'meta', 'property', 'og:title').get('content')
+        else:
+            title = soup.find_all(id='post_header_title')[0].text
         day_num = meta.find_all(id='post_header_day_no')[0].text.split(' ')[-1]
         likes = meta.find_all(class_='ajax_like_count')[0].text
         date = meta.find_all(id='post_header_date')[0].text
@@ -135,7 +138,8 @@ def parse_follows(soup):
         
 def parse_comment(soup):
     username = soup.find_all(class_='comment_author')[0].text
-    text = ''.join(list(soup.p.strings)[1:]) # will remove any tags within!!
+    replace_emoji(soup.p)
+    text = ''.join(list(soup.p.strings)[1:])[1:]  # will remove any tags within!! # skip first element, it's the username
     avatar_link = soup.a.img.get('src')
     return post.Comment(username, text, avatar_link)
     
@@ -219,5 +223,8 @@ def replace_emoji(soup):
     
     for emoji in soup.find_all(class_='emoji'):
         alt = emoji.get('alt')  # stores the Unicode equivalent
+        src = os.path.basename(urlparse.urlparse(emoji.get('src')).path)
+        tag = '<emoji alt="%s" src="%s" />' % (alt, src)
         emoji.replace_with(alt)
+        
     

@@ -34,6 +34,7 @@ class Activity(object):
         return self.__str__()
     
     def all_days(self):
+        """ Returns a sorted list of all the days of activity """
         days = list()
         for y in sorted(self.years.keys()):
             for d in sorted(self.years[y].days.keys()):

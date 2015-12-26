@@ -132,13 +132,18 @@ class blog_spider(object):
             
             # capture img urls, replacing them with just their names
             img_tags = day_soup.find_all('img')
+            video_tags = day_soup.find_all('video')
             for tag in img_tags:
                 src = tag[u'src']
                 self.image_urls.add(src)
                 # if u'http://cdnjs.cloudflare.com/ajax/libs/twemoji/1.4.1/36x36/1f1ef-1f1f4.png' == src: print(url)  # TODO: where is this image coming from?
                 tag[u'src'] = pull.url2filename(src)
-            
-            # parse page
+            for tag in video_tags:
+                src = tag.get('poster')
+                self.image_urls.add(src)
+                tag[u'poster'] = pull.url2filename(src)
+                
+            # parse the page
             try:
                 day_page = parser.parse_day_page(day_soup)
             except Exception as e:
