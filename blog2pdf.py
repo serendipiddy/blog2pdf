@@ -191,10 +191,12 @@ class d2pcli(cmd.Cmd):
         
         if re.search(r'(\d{4}) (\d{2})', day) is None:
             print('invalid format. use "YYYY DDD"')
+            return
         year = int(re.search(r'(\d{4}) (\d{2})', day).group(1))
         day = int(re.search(r'(\d{4}) (\d{1,3})', day).group(2))
         
         self.selectedday = get_day(self.data['activity'], year, day)
+        print('selected %s' % self.selecteday)
         
         return
         
