@@ -196,7 +196,7 @@ class d2pcli(cmd.Cmd):
         day = int(re.search(r'(\d{4}) (\d{1,3})', day).group(2))
         
         self.selectedday = get_day(self.data['activity'], year, day)
-        print('selected %s' % self.selecteday)
+        print('selected %s' % self.selectedday)
         
         return
         
