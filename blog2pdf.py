@@ -77,10 +77,66 @@ def search_for_new_comments(activity):
     # TODO
     return
     
-def update_day(activity, year, day):
+def update_data(username, activity):
+    """ Updates the user data from the most recent available day """
+    
+    # get most recent day
+    day = most_recent_day(activity)
+    # update_all_from( that date )
+    data = update_all_from(username, activity, day[0], day[1])
+    # notify operation is complete
+    print('loaded data has been updated')
+    # prompt user to save the data
+    print('type "save" to write changes to disc')
+    
+    return data
+    
+def update_all_from(username, activity, year, day):
     """ Replaces the existing given day with the latest version """
-    # TODO
-    return
+    
+    print('updating date of "%s" from %d day # %d' % (username, year, day))
+    
+    print('Initiating spider')
+    # obtain URL of day (if exists -- else... just take all from most recent month)
+    try:
+        ds = blog_spider(username)
+    except UserNotFoundError as e:
+        print('Exception occurred: %s' % e.message)
+        return
+    
+    ds.process_profile()
+    
+    date = get_date(year, day)
+    # discover posts from the year and month
+    ds.discover_posts(update_from={'year':year,'month':date.month})
+    
+    # filter list of days to include only those from days including and after the given day
+    data_day = get_day(activity, year, day)
+    if not data_day:
+        print('error finding day to update from')
+        return  # TODO just start from the beginning
+    recent_url = data_day.link
+    print('recent url: %s' % recent_url)
+    
+    new_list = list()
+    existing_url_list 
+    for url in ds.day_urls:
+        print('testing against: %s' % url)
+        new_list.append(url)
+        # if url == recent_url:
+            # break
+    
+    # begin updating from there as normal
+    ds.read_post_data(urls=new_list)
+    ds.download_images()
+    
+    return ds.get_userdata()
+    
+def get_date(year, day):
+    """ given YYYY and DDD of that year, returns a datetime.date object """
+    year_start = datetime.date(year, 1, 1).toordinal()
+    day_ordinal = year_start + day
+    return datetime.date.fromordinal(day_ordinal)
     
 def get_day(activity, year, day):
     """ Prints the selected day's text to the CLI """
@@ -171,32 +227,39 @@ class d2pcli(cmd.Cmd):
         """ Updates the stored data with recent posts """
         if not self.check_user(): return
         if not self.check_data(): return
+        print("Coming soon..")
+        return
         
-        recent_day = most_recent_day(self.data['activity'])
+        
+        data = update_data(self.data['username'], self.data['activity'])
+        
+        # merge activities..
+        new_days = data['activity'].all_days()
+        self.data['activity'].merge_new_days(new_days)
         
         # TODO
         """ This function can be used with periodic saving to tmp while pulling data to avoid errors ruining an autoget() download """
-        print("Coming soon..")
+        # print("Coming soon..")
         
     def do_lastday(self, line):
         """ Prints the most recent day in stored data """
         if not self.check_user(): return
         if not self.check_data(): return
         day=most_recent_day(self.data['activity'])
-        print("Day #%d, %d" % (day[1], day[0]))
+        print("%d day #%d" % (day[0], day[1]))
         
     def do_getday(self, day):
         """ Accepts "YYYY DDD" index of a day, prints that day's data and holds """
-        # TODO checks with regex for a year and a day '\d{4} \d{1,2,3}'
         
-        if re.search(r'(\d{4}) (\d{2})', day) is None:
+        result = re.search(r'(\d{4}) (\d{1,3})', day)
+        if result is None:
             print('invalid format. use "YYYY DDD"')
             return
-        year = int(re.search(r'(\d{4}) (\d{2})', day).group(1))
-        day = int(re.search(r'(\d{4}) (\d{1,3})', day).group(2))
+        year = int(result.group(1))
+        day = int(result.group(2))
         
         self.selectedday = get_day(self.data['activity'], year, day)
-        print('selected %s' % self.selectedday)
+        print('selected -- %s' % self.selectedday)
         
         return
         

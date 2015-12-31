@@ -6,6 +6,7 @@ import activity
 import sys
 import os
 import urlparse, shutil
+from time import strptime
 
 blog_url = "https://dayre.me/"
 PARSER = 'lxml'
@@ -78,8 +79,24 @@ class blog_spider(object):
         self.image_urls.update( pull.get_image_urls( followers_soup.find_all(id='follow_container')[0] ) )
         self.image_urls.update( pull.get_image_urls( following_soup.find_all(id='follow_container')[0] ) )
         
-    def discover_posts(self):
-        """ Populates self.day_urls with user's days """
+    def month_to_int(self, month_str):
+        """ convert a month's string form into its integer form """
+        if len(month_str) == 3:
+            return strptime(month_str,'%b').tm_mon
+        if len(month_str) > 3:
+            return strptime(month_str,'%B').tm_mon
+        else: 
+            print(" not a real month string \"%s\"" % month_str)
+            return 0
+        
+    def discover_posts(self, update_from = None):
+        """ Populates self.day_urls with user's days. 
+            update_from updates posts from and including the given day.
+                of the form {year: int(YYYY), month: int(MM)) """
+                
+        if update_from:
+            u_year = update_from['year']
+            u_month = update_from['month']
         
         print('Discovering user activity')
         # iterate through years and months, discovering posts' URLs
@@ -97,12 +114,26 @@ class blog_spider(object):
             y = url.split('/')[-1]
             sys.stdout.write('%d...' % (int(y) + 1) )
             sys.stdout.flush()
-            month_urls.extend( pull.find_active_months(year_soup) )
+            
+            """ continue to months if using update_from is active 
+                  and the current soup is for an earlier year """
+            if update_from: 
+                if int(y)+1 < u_year:  
+                    break
+                elif int(y)+1 == u_year:
+                    for m in pull.find_active_months(year_soup):
+                        month_int =  self.month_to_int(m[0])
+                        if (month_int >= u_month):
+                            month_urls.append( m )
+                else:
+                    month_urls.extend( pull.find_active_months(year_soup) )
+            else:
+                month_urls.extend( pull.find_active_months(year_soup) )
             year_soup = pull.get_soup(url, self.session) # get next year
         del year_soup  # be a tidy kiwi
 
-        print('Beginning working through months (%d)' % len(month_urls))
         #  iterate through months
+        print('Beginning working through months (%d)' % len(month_urls))
         for name, url in month_urls:
             print('%s - %s' % (name, url))
             month_soup = pull.get_soup(url, self.session)

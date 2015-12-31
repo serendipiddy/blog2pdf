@@ -2,6 +2,7 @@ from post import Post, Comment
 from datetime import datetime
 import re
 import sys
+from copy import deepcopy
 
 
 # regex for weekdays: http://stackoverflow.com/a/21709043
@@ -123,6 +124,22 @@ class Activity(object):
                     days.append(rv)
         return days
 
+    def merge_new_days(self, days):
+        """ Adds the list of days to this activity, replacing any days that exist already """
+        
+        for day in days:
+            exists = self.get_day(day.date.year, day.day_num)
+            if exists:
+                # TODO.. not sure how to do this..
+                # delete it ## can't simply delete.. tags etc
+                # del self.years[day.date.year].days[day_num]
+                continue
+                
+            for post in day.posts:
+                self.add_post(deepcopy(day), post)
+            for comment in day.comments:
+                self.add_comment(deepcopy(day), comment)
+    
 class Year(object):
     """ Holds a years activity information """
     
