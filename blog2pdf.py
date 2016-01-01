@@ -9,7 +9,7 @@ import re
 import datetime
 import post
 import textwrap
-import xml_export
+import dicttoxml
 from tex_export import data2tex
 import json
 
@@ -169,6 +169,12 @@ def print_comments(day):
     print("Comments for day %d" % day.day_num)
     for comment in day.comments:
         print ( 'By: @%s\n%s\n' % (comment.username, '\n'.join(textwrap.wrap(comment.text, 80)) ) )
+        
+def get_json(data):
+    data_json = json.loads(BlogJSONEncoder().encode(data))
+    data_json['activity'] = json.loads(BlogJSONEncoder().encode(data['activity'].all_days()))
+    
+    return data_json
     
 class BlogJSONEncoder(json.JSONEncoder):
     def default(self, o):
@@ -287,13 +293,22 @@ class d2pcli(cmd.Cmd):
     def do_xml(self, line):
         if not self.check_user(): return
         if not self.check_data(): return
-        xml_export.data2xml(self.data)
+        
+        data_json = get_json( self.data )
+        xml = dicttoxml.dicttoxml(data_json)
+        
+        with open('%s_data.xml' % self.data['username'], 'w') as f:
+            f.write(xml)
+        
+        print('saved as xml file')
         
     def do_json(self, line):
         """ export user data as a json file """
+        if not self.check_user(): return
+        if not self.check_data(): return
         
-        data_json = json.loads(BlogJSONEncoder().encode(self.data))
-        data_json['activity'] = json.loads(BlogJSONEncoder().encode(self.data['activity'].all_days()))
+        data_json = get_json( self.data )
+        
         with open('%s_data.json' % self.data['username'], 'w') as f:
             f.write(json.dumps(data_json, indent=4))
         print('saved as json file')
