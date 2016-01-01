@@ -9,6 +9,7 @@ class Post(object):
         assert type(text) is str or type(text) is unicode
         # assert len(text.strip()) < 500
         self.text = text.strip()
+        self.post_type = self.__class__.__name__
         
         self.hashtags = list()
         self.usertags = list()

@@ -295,7 +295,7 @@ class d2pcli(cmd.Cmd):
         if not self.check_data(): return
         
         data_json = get_json( self.data )
-        xml = dicttoxml.dicttoxml(data_json)
+        xml = dicttoxml.dicttoxml(data_json, attr_type=False)
         
         with open('%s_data.xml' % self.data['username'], 'w') as f:
             f.write(xml)

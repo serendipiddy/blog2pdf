@@ -58,26 +58,41 @@ class blog_spider(object):
             Raises Not200ErrorException """
         
         print('Process profile and follows')
-        self.userdata.update( parser.parse_profile(self.root_soup) )
         
         # add cover and avatar images
-        avatar_url = self.root_soup.find_all(id='badge_avatar')[0].img[u'src'].replace('-50p','')
-        cover_url = self.root_soup.find_all(id='profiletop_cover')[0].img[u'src'].replace('-50p','')
-        self.image_urls.add(avatar_url)
-        self.image_urls.add(cover_url)
+        avatar = self.root_soup.find_all(id='badge_avatar')[0]
+        cover = self.root_soup.find_all(id='profiletop_cover')[0]
+        avatar_url = avatar.img[u'src'].replace('-50p','')
+        cover_url = cover.img[u'src'].replace('-50p','')
+        # add
+        self.image_urls.add( avatar_url )
+        self.image_urls.add( cover_url )
+        # localise
+        avatar.img[u'src'] = pull.url2filename(avatar_url)
+        cover.img[u'src'] = pull.url2filename(cover_url)
+
+        self.userdata.update( parser.parse_profile(self.root_soup) )
         
+        # Followers
         fers_url = '%s%s/followers?id=%s' % (blog_url, self.userdata['username'], self.userdata['user_id'])
         fing_url = '%s%s/following?id=%s' % (blog_url, self.userdata['username'], self.userdata['user_id'])
         followers_soup = pull.get_soup(fers_url, self.session)
         following_soup = pull.get_soup(fing_url, self.session)
-            
+        
         # extract data from the pages
+        # search for and update url for desired images
+        for tag in set(followers_soup.find_all(id='follow_container')[0].find_all('img')):
+            src = tag[u'src']
+            self.image_urls.add(src)
+            tag[u'src'] = pull.url2filename(src)
+        
+        for tag in set(following_soup.find_all(id='follow_container')[0].find_all('img')):
+            src = tag[u'src']
+            self.image_urls.add(src)
+            tag[u'src'] = pull.url2filename(src)
+
         self.userdata['followers'] = parser.parse_follows(followers_soup)
         self.userdata['following'] = parser.parse_follows(following_soup)
-        
-        # search for desired images
-        self.image_urls.update( pull.get_image_urls( followers_soup.find_all(id='follow_container')[0] ) )
-        self.image_urls.update( pull.get_image_urls( following_soup.find_all(id='follow_container')[0] ) )
         
     def month_to_int(self, month_str):
         """ convert a month's string form into its integer form """
