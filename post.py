@@ -10,14 +10,16 @@ class Post(object):
         # assert len(text.strip()) < 500
         self.text = text.strip()
         
-        self.hashtags = set()
-        self.usertags = set()
+        self.hashtags = list()
+        self.usertags = list()
         
         # audit hash and user tags
         for tag in re.findall(hashtag_re, text):
-            self.hashtags.add(tag)
+            if tag not in self.hashtags:
+                self.hashtags.append(tag)
         for tag in re.findall(usertag_re, text):
-            self.usertags.add(tag)
+            if tag not in self.usertags:
+                self.usertags.append(tag)
     
     def __str__(self):
         text_length = min(len(self.text), 20)
@@ -35,11 +37,12 @@ class Comment(object):
         self.avatar_link = avatar_link
         self.text = text
         
-        self.usertags = set()
+        self.usertags = list()
         
         # audit user tags
         for tag in re.findall(usertag_re, text):
-            self.usertags.add(tag)
+            if tag not in self.usertags:
+                self.usertags.append(tag)
         
     def __str__(self):
         text_length = min(len(self.text), 20)

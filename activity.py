@@ -57,13 +57,13 @@ class Activity(object):
         # audit tags
         for tag in post.hashtags:
             if tag not in self.hashtags:
-                self.hashtags[tag] = set()
-            self.hashtags[tag].add(day)
+                self.hashtags[tag] = list()
+            self.hashtags[tag].append(day)
             
         for tag in post.usertags:
             if tag not in self.usertags:
-                self.usertags[tag] = set()
-            self.usertags[tag].add(day)
+                self.usertags[tag] = list()
+            self.usertags[tag].append(day)
         
     def add_comment(self, day, comment):
         assert type(day) == Day
@@ -79,8 +79,8 @@ class Activity(object):
         # audit tags
         for tag in comment.usertags:
             if tag not in self.usertags:
-                self.usertags[tag] = set()
-            self.usertags[tag].add(day)
+                self.usertags[tag] = list()
+            self.usertags[tag].append(day)
         
     def get_day(self, year, day_num):
         """ Retrieve the given day """
@@ -152,7 +152,7 @@ class Year(object):
         # self.days_list = list()  # for ordered iteration
         self.months = dict()
         for m in month_labels:
-            self.months[m] = set()  # set of days in each month
+            self.months[m] = list()  # set of days in each month
         self.active = False
         
     def __str__(self):
@@ -190,7 +190,11 @@ class Year(object):
             # add to months
             date = datetime.strptime('%03d%d' % (day.day_num, self.year),'%j%Y')
             m = month_labels[date.month-1]
-            self.months[m].add(day)
+            # custom contains using ANY: http://stackoverflow.com/a/9898639
+            if not any(day_num_equals(day, li) for li in self.months[m]):
+                self.months[m].append(day)
+            else:
+                print ("day %d already exists" % day.day_num)
         else:
             print('day %d already existing in year.days' % day.day_num)
             
@@ -214,6 +218,10 @@ def check_day_parameters(title, day_num, likes, date, link):
     assert type(date) is str or type(date) is unicode          # : print('invalid date type')
     assert date_regex.match(date) is not None  # : print('invalid date format: %s' % date)
     
+def day_num_equals(day1, day2):
+    """ Compares if two day numbers are the same """
+    return day2.day_num == day1.day_num and day2.date.year == day1.date.year
+    
 class Day(object):
     """ Holds the information for a day's entries """
     
@@ -222,7 +230,7 @@ class Day(object):
         self.title = title
         self.day_num = day_num
         self.likes = likes
-        self.date = datetime.strptime(date, date_format)
+        self.date = datetime.strptime(date, date_format).date()
         self.link = link
         
         self.posts = list()
@@ -243,13 +251,13 @@ class Day(object):
         # audit post, extracting hashtags and usertags
         for tag in post.hashtags:
             if tag not in self.hashtags:
-                self.hashtags[tag] = set()
-            self.hashtags[tag].add(post)
+                self.hashtags[tag] = list()
+            self.hashtags[tag].append(post)
             
         for tag in post.usertags:
             if tag not in self.usertags:
-                self.usertags[tag] = set()
-            self.usertags[tag].add(post)
+                self.usertags[tag] = list()
+            self.usertags[tag].append(post)
         
         self.posts.append(post)
         
@@ -260,8 +268,8 @@ class Day(object):
         # audit post, extracting usertags
         for tag in comment.usertags:
             if tag not in self.usertags:
-                self.usertags[tag] = set()
-            self.usertags[tag].add(comment)
+                self.usertags[tag] = list()
+            self.usertags[tag].append(comment)
         
         self.posts.append(comment)
     
@@ -270,8 +278,8 @@ class Day(object):
         
         for tag in comment.usertags:
             if tag not in self.usertags:
-                self.usertags[tag] = set()
-            self.usertags[tag].add(comment)
+                self.usertags[tag] = list()
+            self.usertags[tag].append(comment)
         
         self.comments.append(comment)
 

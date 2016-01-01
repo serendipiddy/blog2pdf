@@ -110,23 +110,31 @@ class blog_spider(object):
         # iterate through years
         month_urls = list()
         year_soup = self.root_soup  # root is already the latest year
+            
         for url in year_urls:
             y = url.split('/')[-1]
             sys.stdout.write('%d...' % (int(y) + 1) )
             sys.stdout.flush()
             
+            # if len(month_urls == 1):  # use year's url, the month (../2016/01) seems broken for january 2016.. so use the /2016 instead
+            pulled = pull.find_active_months(year_soup)
+            if len(pulled) == 1:
+                month_urls.append((str(int(y) + 1), '%s%s' % (blog_url, self.userdata['username'])))  # bug for 404 on "../2016/01", using "../2016" instead
+                year_soup = pull.get_soup(url, self.session) # get next year
+                continue
+                
             """ continue to months if using update_from is active 
                   and the current soup is for an earlier year """
             if update_from: 
                 if int(y)+1 < u_year:  
                     break
                 elif int(y)+1 == u_year:
-                    for m in pull.find_active_months(year_soup):
+                    for m in pulled:
                         month_int =  self.month_to_int(m[0])
                         if (month_int >= u_month):
                             month_urls.append( m )
                 else:
-                    month_urls.extend( pull.find_active_months(year_soup) )
+                    month_urls.extend( pulled )
             else:
                 month_urls.extend( pull.find_active_months(year_soup) )
             year_soup = pull.get_soup(url, self.session) # get next year

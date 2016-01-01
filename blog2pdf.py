@@ -11,6 +11,7 @@ import post
 import textwrap
 import xml_export
 from tex_export import data2tex
+import json
 
 # def get_args():
     # parser = argparse.ArgumentParser(description='Tool for creating a PDF from a user\'s Blog data.')
@@ -169,6 +170,12 @@ def print_comments(day):
     for comment in day.comments:
         print ( 'By: @%s\n%s\n' % (comment.username, '\n'.join(textwrap.wrap(comment.text, 80)) ) )
     
+class BlogJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if "__dict__" in dir(o):
+            return o.__dict__
+        return o.__str__()
+    
 class d2pcli(cmd.Cmd):
     def __init__(self):
         cmd.Cmd.__init__(self)
@@ -282,6 +289,15 @@ class d2pcli(cmd.Cmd):
         if not self.check_data(): return
         xml_export.data2xml(self.data)
         
+    def do_json(self, line):
+        """ export user data as a json file """
+        
+        data_json = json.loads(BlogJSONEncoder().encode(self.data))
+        data_json['activity'] = json.loads(BlogJSONEncoder().encode(self.data['activity'].all_days()))
+        with open('%s_data.json' % self.data['username'], 'w') as f:
+            f.write(json.dumps(data_json, indent=4))
+        print('saved as json file')
+        return
         
     def do_tex(self, line):
         """ Exports the selected data to a tex file """
