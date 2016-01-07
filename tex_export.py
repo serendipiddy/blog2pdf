@@ -8,7 +8,8 @@ from datetime import datetime
 
 
 image_dir = 'images2/'
-image_width = '200px'
+image_width = '150px'
+document_year = 0;
 
 def data2tex(userdata, filename):
     """ Entrypoint. Converts saved user data to tex """
@@ -26,16 +27,16 @@ def export_user(doc, userdata):
     
     doc.preamble.append(Command('title', userdata['name']))
     doc.preamble.append(Command('author', userdata['url']))
-    doc.append(NoEscape(r'\clearpage'))
     doc.append(NoEscape(r'\maketitle'))
+    doc.append(NoEscape(r'\clearpage'))
     
     return 
     
     
 def export_activity(doc, userdata):
-    with doc.create(Section('Activity', numbering=False)):
-        for day in userdata['activity'].all_days():
-            export_day(doc, day, userdata['username'])
+    # with doc.create(Section('Activity', numbering=False)):
+    for day in userdata['activity'].all_days():
+        export_day(doc, day, userdata['username'])
     return
     
 def export_post(doc, _post):
@@ -76,18 +77,27 @@ def export_post(doc, _post):
     return
     
 def export_day(doc, day, username):
+    global document_year
+    
     if day.title == '':
         daytitle = 'Day %d'  % (day.day_num)
     else:
         daytitle = 'Day %d - %s'  % (day.day_num, day.title)
+    daydate = '%s' % day.date.strftime('%A, %d %b %Y')
+    post_year = day.date.year
     
-    ## \newpage forces new column
+    if not (document_year == post_year):
+        document_year = post_year
+        doc.append(NoEscape(r'\clearpage'))
+        doc.append(Section('%d' % document_year, numbering=False))
+        doc.append(NoEscape(r'\clearpage'))
     
-    with doc.create(Subsection(daytitle, numbering=False )):
-        doc.append(bold( day.date.strftime('%A, %d %b %Y\n') ))
+    with doc.create(Subsection("%s\n%s" % (daytitle, daydate), numbering=False )):
         for p in day.posts:
             export_post(doc, p)
     # doc.append(day)
+    # doc.append(NoEscape(r'\clearpage'))
+    doc.append(NoEscape(r'\newpage'))  # \newpage forces new column
     return
     
 def export_emoji(doc, emoji):

@@ -316,6 +316,8 @@ class d2pcli(cmd.Cmd):
         
     def do_tex(self, line):
         """ Exports the selected data to a tex file """
+        if not self.check_user(): return
+        if not self.check_data(): return
         print('Experimental..!')
         data2tex(self.data, '%s_out' % self.data['username'])
         return
