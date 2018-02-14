@@ -1,6 +1,8 @@
 from bs4 import BeautifulSoup as bs
 import requests, os, bisect, re, shutil, sys
 from urllib.parse import urlparse
+from time import sleep
+from datetime import datetime, timedelta
 
 # import multiprocessing
 
@@ -8,6 +10,11 @@ blog_url = "https://dayre.me/"
 blog_first_year = 2013
 verbose = False
 PARSER = 'lxml'
+
+wait_time = 20  # seconds between retry after a GET fails
+retry_limit = 10  # attempts
+delay_time = timedelta(seconds=1)  # seconds between successive requests
+next_request_time = datetime.now()
 
 static_imgs = 'images'
 
@@ -72,10 +79,17 @@ def get_soup(url, session):
     """ Performs error checking before returning the 
         soup object of the given URL """
     
+    count = 0
     while( True ):
         sys.stdout.write('GET: %s' % url)
         sys.stdout.flush()
         # Avoid connection error ending everything
+
+        # delay successive requests
+        if datetime.now() < next_request_time:
+            sleep(1)
+        next_request_time = datetime.now() + delay_time
+
         try:
             r = session.get(url)
             break
@@ -83,11 +97,18 @@ def get_soup(url, session):
             print('\nConnection Error: %s' % e)
             print('Refreshing session..')
             session = requests.Session()
+        
+        if r.status_code >= 500 and r.status_code <=599 and count <= retry_limit:
+            print("Not 200 error. Retry connection in 10 seconds code:{} url:{}".format(r.status_code, url))
+            sleep(wait_time)
+            count += 1
+        if count > retry_limit:
+            break
             
     soup = bs( r.text, PARSER )
     if r.status_code is not 200:
         raise Not200ErrorException(r.status_code, soup.title)
-    
+
     sys.stdout.write(' -- SUCCESS\n')
     sys.stdout.flush()
     return soup
@@ -122,7 +143,7 @@ def find_day_urls(soup, session):
         
         # check for more days
         next_day = soup.find_all(id='load_more_no_js')
-        if next_day and len(next_day) > 0: 
+        if next_day and len(next_day) > 0:
             url = next_day[0].a[u'href']
             soup = get_soup(url, session)
         else: 

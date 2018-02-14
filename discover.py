@@ -7,11 +7,16 @@ import sys
 import os
 import shutil
 from urllib.parse import urlparse
-from time import strptime
+from time import strptime, sleep
 
 blog_url = "https://dayre.me/"
 PARSER = 'lxml'
 static_imgs = 'images2'
+
+wait_time = 20  # seconds between retry after a GET fails
+retry_limit = 10  # attempts
+delay_time = timedelta(seconds=1)  # seconds between successive requests
+next_request_time = datetime.now()
 
 class blog_spider(object):
     
@@ -129,6 +134,11 @@ class blog_spider(object):
             
         for url in year_urls:
             y = url.split('/')[-1]
+
+            ## TODO JUST FOR DEBUG, REMOVE LATER
+            if int(y) == 2015:
+                break
+
             sys.stdout.write('%d...' % (int(y) + 1) )
             sys.stdout.flush()
             
@@ -202,7 +212,7 @@ class blog_spider(object):
             try:
                 day_page = parser.parse_day_page(day_soup)
             except Exception as e:
-                print("\nError Occurred Parsing: %s\nDay url:%s\nContinuing from next post" % (e.message, url))
+                print("\nError Occurred Parsing: %s\nDay url:%s\nContinuing from next post" % (e, url))
                 continue
             today = activity.Day(day_page['title'], day_page['day_num'], day_page['likes'], day_page['date'], day_page['link'])
             
@@ -247,10 +257,17 @@ class blog_spider(object):
                 
             fpath = os.path.join(static_imgs, pull.url2filename(imgurl))
             if not os.path.exists(fpath):
+                count = 0
                 while( True ):
                     sys.stdout.write('GET: %s' % imgurl)
                     sys.stdout.flush()
                     # Avoid connection error ending everything
+
+                    # delay successive requests
+                    if datetime.now() < next_request_time:
+                        sleep(1)
+                    next_request_time = datetime.now() + delay_time
+
                     try:
                         r = self.session.get(imgurl, stream=True)
                         sys.stdout.write(' -- SUCCESS\n')
@@ -259,11 +276,22 @@ class blog_spider(object):
                         print('\nConnection Error: %s' % e)
                         print('Refreshing session..')
                         self.session = requests.Session()
+
+                    if r.status_code >= 500 and r.status_code <= 599 and count < retry_limit:
+                        print("500 error downloading images, waiting to retry (attempt {} for {})".format(count, imgurl))
+                        count += 1
+                        sleep(wait_time)
+                    if r.status_code >= 400 and r.status_code <=499:
+                        print("{} error downloading image, skipping {}".format(r.status_code, imgurl))
+                    if count > retry_limit:
+                        break
                         
                 if r.status_code == 200:
                     with open(fpath, 'wb') as f:
                         r.raw.decode_content = True
                         shutil.copyfileobj(r.raw, f)
+                else:
+                    print("Downloading image failed, status code:{}".format(r.status_code))
             else: 
                 sys.stdout.write(' -- Exists\r')
                 sys.stdout.flush()
@@ -287,4 +315,4 @@ class UserNotFoundError(Exception):
     def __repr__(self):
         return self.__str__()
             
-    
+

@@ -38,7 +38,7 @@ def get_data(username):
         # create blog_puller
         ds = blog_spider(username)
     except UserNotFoundError as e:
-        print('Exception occurred: %s' % e.message)
+        print('Exception occurred: %s' % e)
         return
     
     ds.process_profile()
@@ -102,7 +102,7 @@ def update_all_from(username, activity, year, day):
     try:
         ds = blog_spider(username)
     except UserNotFoundError as e:
-        print('Exception occurred: %s' % e.message)
+        print('Exception occurred: %s' % e)
         return
     
     ds.process_profile()
