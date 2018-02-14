@@ -5,7 +5,8 @@ import parse_blog as parser
 import activity
 import sys
 import os
-import urlparse, shutil
+import shutil
+from urllib.parse import urlparse
 from time import strptime
 
 blog_url = "https://dayre.me/"
@@ -240,7 +241,7 @@ class blog_spider(object):
             i += 1
             
             # check it's a relatively legitimate URL
-            url = urlparse.urlparse(imgurl)
+            url = urlparse(imgurl)
             if url.scheme == '':
                 imgurl = 'http:%s' % imgurl
                 

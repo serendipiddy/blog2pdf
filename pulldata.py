@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup as bs
 import requests, os, bisect, re, shutil, sys
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 # import multiprocessing
 
@@ -61,7 +61,7 @@ def find_active_months(soup):
     links = list()
     for tag in reversed(months):
         if not (tag.has_attr('class') and u'disabled' in tag.get('class')):  
-            month = tag.a.stripped_strings.next()
+            month = next(tag.a.stripped_strings)
             url = tag.a[u'href']
             links.append((month, url))
             # break  # for testing
@@ -121,9 +121,9 @@ def find_day_urls(soup, session):
                 day_links.append(tag.a.attrs[u'href'])
         
         # check for more days
-        next = soup.find_all(id='load_more_no_js')
-        if next and len(next) > 0: 
-            url = next[0].a[u'href']
+        next_day = soup.find_all(id='load_more_no_js')
+        if next_day and len(next_day) > 0: 
+            url = next_day[0].a[u'href']
             soup = get_soup(url, session)
         else: 
             break # no more days to load

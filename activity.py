@@ -19,7 +19,7 @@ class Activity(object):
         
         # populate years, 2013..current
         this_year = datetime.utcnow().year
-        for y in xrange(2013, this_year+1):
+        for y in range(2013, this_year+1):
             self.years[y] = Year(y)
         
     def __str__(self):
@@ -115,10 +115,10 @@ class Activity(object):
         assert year_from >= 2013 and year_from <= 9999
         
         days = list()
-        for y in xrange(year_from, year_to+1):
+        for y in range(year_from, year_to+1):
             if y not in self.years:
                 return days
-            for d in xrange(day_from, day_to+1):
+            for d in range(day_from, day_to+1):
                 rv = self.get_day(y,d)
                 if rv is not None:
                     days.append(rv)

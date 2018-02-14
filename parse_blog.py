@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup as bs
 from activity import (Day, Activity)
 import post
-import urlparse
+from urllib.parse import urlparse
 import os
 
 
@@ -129,7 +129,7 @@ def parse_follows(soup):
         user = dict()
         user['username'] = all_usernames[i].a.text
         user['name'] = all_names[i].a.text
-        url = urlparse.urlparse(all_names[i].a.get('href'))
+        url = urlparse(all_names[i].a.get('href'))
         user['url'] = '%s%s'%(url.netloc, url.path)
         user['avatar_link'] = all_avatars[i].img.get('src')
         users.append(user)
@@ -168,7 +168,7 @@ def parse_video(soup):
     return post.User_video(soup.text, preview_image, actual_link)
     
 def parse_youtube(soup):
-    embed_url =  urlparse.urlparse(soup.previous_sibling.div.iframe.get('src'))
+    embed_url =  urlparse(soup.previous_sibling.div.iframe.get('src'))
     video_id = '%s%s' % (youtube_link, os.path.basename(embed_url.path))
     return post.YouTube_video(soup.text, video_id)
     
@@ -223,7 +223,7 @@ def replace_emoji(soup):
     
     for emoji in soup.find_all(class_='emoji'):
         alt = emoji.get('alt')  # stores the Unicode equivalent
-        src = os.path.basename(urlparse.urlparse(emoji.get('src')).path)
+        src = os.path.basename(urlparse(emoji.get('src')).path)
         tag = '<emoji alt="%s" src="%s" />' % (alt, src)
         emoji.replace_with(alt)
         
