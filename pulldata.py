@@ -18,6 +18,8 @@ next_request_time = datetime.now()
 
 static_imgs = 'images'
 
+# cookie = ""
+
 # control codes: http://stackoverflow.com/a/12586667  # delete previous line print(CURSOR_UP_ONE + ERASE_LINE)
 
 """ Getting URLs """
@@ -75,7 +77,7 @@ def find_active_months(soup):
     
     return links
     
-def get_soup(url, session):
+def get_soup(url, session, next_request_time=next_request_time):
     """ Performs error checking before returning the 
         soup object of the given URL """
     
@@ -92,18 +94,22 @@ def get_soup(url, session):
 
         try:
             r = session.get(url)
-            break
         except requests.exceptions.ConnectionError as e:
             print('\nConnection Error: %s' % e)
             print('Refreshing session..')
             session = requests.Session()
+            # session.cookies["dayre"] = cookie
+            continue
         
-        if r.status_code >= 500 and r.status_code <=599 and count <= retry_limit:
+        if r.status_code >=200 and r.status_code <=299:
+            break
+        elif count <= retry_limit:
             print("Not 200 error. Retry connection in 10 seconds code:{} url:{}".format(r.status_code, url))
             sleep(wait_time)
             count += 1
-        if count > retry_limit:
+        elif count > retry_limit:
             break
+        
             
     soup = bs( r.text, PARSER )
     if r.status_code is not 200:

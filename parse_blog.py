@@ -50,8 +50,9 @@ def parse_day_page(soup):
     posts = list()
     
     # remove the empty children
+    # TODO this doesn't work in python3 / anymore.. weird
     for child in container.children:
-        if unicode(child) == u'\n':
+        if str(child) == u'\n':
             child.extract()
     
     for p in container.find_all('p'):
@@ -65,6 +66,9 @@ def parse_day_page(soup):
         # post's type is determined by the previous element
         
         prev = p.previous_sibling
+        while prev == '\n':
+            prev.extract()
+            prev = p.previous_sibling
         
         # common line of execution here, so avoids doing it in all the subsequent function calls
         if prev == None or prev.name == 'p':  # this is a text or quote post
@@ -73,6 +77,8 @@ def parse_day_page(soup):
             else:
                 posts.append(parse_text(p))
             continue
+        elif 'private_post' in p.get('class'):  # private post
+            posts.append(parse_private(p))
         elif 'action_image' in prev.get('class'):     # this is an image post
             posts.append(parse_image(p))
         elif 'action_sticker' in prev.get('class'):     # this is a sticker
@@ -148,6 +154,9 @@ def parse_comment(soup):
 def parse_text(soup):
     """ Returns a Post object of type text from the <p> soup """
     return post.Post(soup.text)
+    
+def parse_private(soup):
+    return "Private post"
 
 def parse_location(soup):
     """ Given the text of a location post returns a Location object"""

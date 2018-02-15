@@ -7,7 +7,7 @@ import post
 from datetime import datetime
 
 
-image_dir = 'images2/'
+image_dir = 'images/'
 image_width = '150px'
 document_year = 0;
 

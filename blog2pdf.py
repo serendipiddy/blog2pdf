@@ -36,7 +36,7 @@ def get_data(username):
     print('Initiating spider')
     try:
         # create blog_puller
-        ds = blog_spider(username)
+        ds = blog_spider(username, export=True)
     except UserNotFoundError as e:
         print('Exception occurred: %s' % e)
         return
@@ -54,7 +54,7 @@ def show_users_pickle(username):
     print(user['activity'])
 
 def save_user_data(data, filename):
-    with open(filename, 'w') as f:
+    with open(filename, 'wb') as f:
         pickle.dump(data, f)
     
 def load_user_data(filename):
