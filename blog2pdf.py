@@ -13,6 +13,8 @@ import dicttoxml
 from tex_export import data2tex
 import json
 
+from makepage import generate_indices
+
 # def get_args():
     # parser = argparse.ArgumentParser(description='Tool for creating a PDF from a user\'s Blog data.')
     # parser.add_argument('username', help='Username of user')
@@ -45,6 +47,8 @@ def get_data(username):
     ds.discover_posts()
     ds.read_post_data()
     ds.download_images()
+    ds.download_videos()
+    # generate_indices(ds.get_userdata())
     
     return ds.get_userdata()
     
@@ -235,7 +239,15 @@ class d2pcli(cmd.Cmd):
         if not self.check_data(): return
         d = self.data
         print('Name: %s\nURL: %s\nBio: %s\n%s ' % (d['name'], d['url'], d['bio'], d['activity']))
+    
+    def do_makeindex(self, line):
+        """ Generates html files for years and months """
         
+        if not self.check_user(): return
+        if not self.check_data(): return
+        
+        # generate_indices(self.data)
+    
     def do_update(self, line):
         """ Updates the stored data with recent posts """
         if not self.check_user(): return
