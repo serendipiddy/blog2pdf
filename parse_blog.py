@@ -77,7 +77,7 @@ def parse_day_page(soup):
             else:
                 posts.append(parse_text(p))
             continue
-        elif 'private_post' in p.get('class'):  # private post
+        elif p.get('class') is not None and 'private_post' in p.get('class'):  # private post
             posts.append(parse_private(p))
         elif 'action_image' in prev.get('class'):     # this is an image post
             posts.append(parse_image(p))

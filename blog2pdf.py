@@ -33,12 +33,12 @@ from makepage import generate_indices
         
     # get_data(parser.username)
     
-def get_data(username):
+def get_data(username, use_s3=False):
     print('This will take a long time ~~')
     print('Initiating spider')
     try:
         # create blog_puller
-        ds = blog_spider(username, export=True)
+        ds = blog_spider(username, export=True, use_s3=use_s3)
     except UserNotFoundError as e:
         print('Exception occurred: %s' % e)
         return
@@ -192,6 +192,7 @@ class d2pcli(cmd.Cmd):
         self.data = ''
         self.username = ''
         self.selectedday = ''
+        self.use_s3 = False
         
     def check_user(self):
         if self.username == '':
@@ -208,12 +209,21 @@ class d2pcli(cmd.Cmd):
     def do_autoget(self, line):
         """ auto_get -- Finds and pulls all blog data for currently set username, saving images and dumping a data file """
         if not self.check_user(): return
-        self.data = get_data(self.username)
+        self.data = get_data(self.username, self.use_s3)
         
     def do_set(self, username):
         """ set -- Selects the given user """
         self.username = username
         print('set user to: %s' % self.username)
+        
+    def do_login(self, username, password):
+        """ logs in as the given user """
+        pulldata.set_login(username, password)
+        
+    def do_uses3(self, line):
+        """ toggles using and not using S3 as export location """
+        self.use_s3 = not self.use_s3
+        print("use_s3: {}".format(self.use_s3))
         
     def do_load(self, line):
         """ load -- Reads the selected user's data file if it exists. Replaces any open user files """

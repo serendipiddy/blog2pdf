@@ -16,32 +16,35 @@ from io import BytesIO
 blog_url = "https://dayre.me/"
 PARSER = 'lxml'
 static_imgs = 'images'
+videos = 'videos'
 default_local_folder = "export_html"
-cookie = ""
 
 wait_time = 20  # seconds between retry after a GET fails
 retry_limit = 10  # attempts
 delay_time = timedelta(seconds=1)  # seconds between successive requests
 next_request_time = datetime.now()
 
-bucket_name = ""
-use_s3=False
+bucket_name = "dayre.iddy.kiwi"
 
 class blog_spider(object):
     
-    def __init__(self, username, dummy = False, export = False, export_location = "local"):
+    def __init__(self, username, dummy = False, export = False, export_location = "local", use_s3=False):
         assert type(username) is str or type(username) is unicode
         self.username = username
         
         self.session = requests.Session()
-        # self.session.cookies["dayre"] = cookie
+        pull.login(self.session)
+        
         self.userdata = dict()
         self.image_urls = set()  # images to download
+        self.video_urls = set()  # images to download
         self.day_urls = set()  # day name -- (yyyy_ddd) -> url
         self.userdata['activity'] = activity.Activity()
         self.export = export
         self.export_location = export_location
+        self.use_s3 = use_s3
         
+        pull.set_cookie(self.session)
         url = "%s%s" % (blog_url, username)
         
         if dummy: return 
@@ -57,7 +60,7 @@ class blog_spider(object):
                 print('\nConnection Error: %s' % e)
                 print('Refreshing session..')
                 self.session = requests.Session()
-                # self.session.cookies["dayre"] = cookie
+                pull.set_cookie(self.session)
         
         sys.stdout.write(' -- SUCCESS\n')
         sys.stdout.flush()
@@ -71,7 +74,7 @@ class blog_spider(object):
         
         if export_location == "local":
             self.dumper = dumpers.local_dumper(username, default_local_folder) 
-        if export_location == "s3" or use_s3: ## export_location: == "s3":
+        if export_location == "s3" or self.use_s3: ## export_location: == "s3":
             self.dumper = dumpers.s3_dumper(username, bucket_name)
             
     def __str__(self):
@@ -96,14 +99,19 @@ class blog_spider(object):
         cover.img[u'src'] = pull.url2filename(cover_url)
 
         if self.export:
-            self.dumper.dump_html(self.root_soup, "profile.html")
+            self.dumper.dump_html(self.root_soup, self.username.strip())
         self.userdata.update( parser.parse_profile(self.root_soup) )
         
         # Followers
         fers_url = '%s%s/followers?id=%s' % (blog_url, self.userdata['username'].strip(), self.userdata['user_id'])
         fing_url = '%s%s/following?id=%s' % (blog_url, self.userdata['username'].strip(), self.userdata['user_id'])
-        followers_soup = pull.get_soup(fers_url, self.session)
-        following_soup = pull.get_soup(fing_url, self.session)
+        
+        if self.export:
+            dumper = self.dumper
+        else:
+            dumper = None
+        followers_soup = pull.get_soup(fers_url, self.session, dumper=dumper)
+        following_soup = pull.get_soup(fing_url, self.session, dumper=dumper)
         
         # extract data from the pages
         # search for and update url for desired images
@@ -117,9 +125,9 @@ class blog_spider(object):
             self.image_urls.add(src)
             tag[u'src'] = pull.url2filename(src)
 
-        if self.export:
-            self.dumper.dump_html(followers_soup, "followers.html")
-            self.dumper.dump_html(following_soup, "following.html")
+        # if self.export:
+            # self.dumper.dump_html(followers_soup, "followers.html")
+            # self.dumper.dump_html(following_soup, "following.html")
         self.userdata['followers'] = parser.parse_follows(followers_soup)
         self.userdata['following'] = parser.parse_follows(following_soup)
         
@@ -144,30 +152,44 @@ class blog_spider(object):
         
         print('Discovering user activity')
         # iterate through years and months, discovering posts' URLs
-        year_urls = pull.find_active_years(self.root_soup, self.session)
+        if self.export:
+            year_urls = pull.find_active_years(self.root_soup, self.session, dumper=self.dumper)
+        else:
+            year_urls = pull.find_active_years(self.root_soup, self.session)
         if len(year_urls) is 0:
             print('no active years found')
             return
             
-        print('Discovered %d years of activity' % (len(year_urls) + 1))
+        print('Discovered %d years of activity' % len(year_urls))
         
         # iterate through years
         year_soup = self.root_soup  # root is already the latest year
-            
-        for url in year_urls:
+        # update_from = 2017
+        
+        for url in sorted(year_urls, reverse=True):
             month_urls = list()
             y = url.split('/')[-1]
+            
+            ## JUST FOR DEBUG
+            # if int(y) != 2018:
+                # continue
 
-
-            sys.stdout.write('%d...' % (int(y) + 1) )
+            sys.stdout.write('{}...'.format(y))
+            # sys.stdout.write('%d...' % (int(y) + 1) )
             sys.stdout.flush()
             
-            # if len(month_urls == 1):  # use year's url, the month (../2016/01) seems broken for january 2016.. so use the /2016 instead
-            pulled = pull.find_active_months(year_soup)
-            if len(pulled) == 1:
-                month_urls.append((str(int(y) + 1), '%s%s' % (blog_url, self.userdata['username'])))  # bug for 404 on "../2016/01", using "../2016" instead
-                year_soup = pull.get_soup(url, self.session) # get next year
-                continue
+            # bug seems fine now.. # if len(month_urls == 1):  # use year's url, the month (../2016/01) seems broken for january 2016.. so use the /2016 instead
+            # pulled = pull.find_active_months(year_soup)
+            # print("Year_soup: {} len:{}".format(y,pulled))
+            # if len(pulled) == 1:
+                # temp_url = "{}{}/{}".format(blog_url, self.userdata['username'], int(y), )
+                # print("temp: {}".format(temp_url))
+                # month_urls.append(temp_url)  # bug for 404 on "../2016/01", using "../2016" instead
+                # if self.export:
+                    # year_soup = pull.get_soup(url, self.session, dumper=self.dumper) # get next year
+                # else:
+                    # year_soup = pull.get_soup(url, self.session) # get next year
+                # continue
                 
             """ continue to months if using update_from is active 
                   and the current soup is for an earlier year """
@@ -183,26 +205,30 @@ class blog_spider(object):
                     month_urls.extend( pulled )
             else:
                 month_urls.extend( pull.find_active_months(year_soup) )
-            year_soup = pull.get_soup(url, self.session) # get next year
-            
+                
             if self.export:
-                self.dumper.dump_html(year_soup, "index.html", year=y)
+                year_soup = pull.get_soup(url, self.session, dumper=self.dumper) # get next year
+            else:
+                year_soup = pull.get_soup(url, self.session) # get next year
+            
+            # if self.export and len(month_urls) > 0:
+                # self.dumper.dump_html(year_soup, int(year))
                 
             #  iterate through months
             print('Beginning working through months (%d)' % len(month_urls))
             for name, url in month_urls:
                 print('%s - %s' % (name, url))
-                month_soup = pull.get_soup(url, self.session)
-                self.day_urls.update( pull.find_day_urls(month_soup, self.session) )
+                if self.export:
+                    month_soup = pull.get_soup(url, self.session, dumper=self.dumper)
+                else:
+                    month_soup = pull.get_soup(url, self.session)
+                self.day_urls.update( pull.find_day_urls(month_soup, self.session, img_list=self.image_urls) )
                 sys.stdout.write('%-3s - total %2.d URLs...' % (name[:3], len(self.day_urls)))
                 sys.stdout.flush()
                 
-                if self.export:
-                    self.dumper.dump_html(month_soup, "index.html", year=int(y)+1, month=name)
+                # if self.export:
+                    # self.dumper.dump_html(month_soup, self.month_to_int(name), year=int(y)+1)
             
-            ## JUST FOR DEBUG
-            # if int(y) <= 2017:
-                # break
         # del year_soup  # be a tidy kiwi
 
         
@@ -224,20 +250,29 @@ class blog_spider(object):
             sys.stdout.flush()
             i += 1
             
-            day_soup = pull.get_soup(url, self.session)
+            if self.export:
+                day_soup = pull.get_soup(url, self.session, dumper=self.dumper)
+            else:
+                day_soup = pull.get_soup(url, self.session)
             
             # capture img urls, replacing them with just their names
             img_tags = day_soup.find_all('img')
             video_tags = day_soup.find_all('video')
             for tag in img_tags:
-                src = tag[u'src']
+                src = tag['src']
                 self.image_urls.add(src)
                 # if u'http://cdnjs.cloudflare.com/ajax/libs/twemoji/1.4.1/36x36/1f1ef-1f1f4.png' == src: print(url)  # TODO: where is this image coming from?
-                tag[u'src'] = pull.url2filename(src)
+                tag['src'] = pull.url2filename(src)
             for tag in video_tags:
                 src = tag.get('poster')
                 self.image_urls.add(src)
-                tag[u'poster'] = pull.url2filename(src)
+                tag['poster'] = pull.url2filename(src)
+                
+                vsrc = tag.find_all("source")
+                if len(vsrc) > 0:
+                    src = vsrc[0]['src']
+                    self.video_urls.add(src)
+                    vsrc[0]['src'] = pull.url2filename(src)
                 
             # parse the page
             try:
@@ -248,11 +283,13 @@ class blog_spider(object):
                 continue
             today = activity.Day(day_page['title'], day_page['day_num'], day_page['likes'], day_page['date'], day_page['link'])
 
-            if self.export:
-                page_title = today.link.split('/')[-1]
-                page_year = today.date.year
-                page_month = today.date.strftime("%B")
-                self.dumper.dump_html(day_soup, "{}.html".format(page_title), year=page_year, month=page_month)
+            # if self.export:
+                # page_title = os.path.join(static_imgs, pull.url2filename(today.link))
+                # print("page title: "+page_title)
+                # # page_title = today.link.split('/')[-1]
+                # page_year = today.date.year
+                # page_month = today.date.strftime("%B")
+                # self.dumper.dump_html(day_soup, "{}.html".format(page_title), year=page_year, month=page_month)
             
             for post in day_page['posts']:
                 self.userdata['activity'].add_post(today, post)
@@ -269,7 +306,17 @@ class blog_spider(object):
         sys.stdout.write('\n')
         sys.stdout.flush()
         
-    def download_images(self, urls=None, next_request_time=next_request_time):
+    def download_videos(self, urls=None):
+        """ Reads video from URLs, saving to hdd.
+            If no URLs are given, iterates through discovered video URLs"""
+            
+        if urls == None:
+            self.download_images(self.video_urls, path_prefix=videos)
+        else:
+            self.download_images(urls)
+        
+        
+    def download_images(self, urls=None, next_request_time=next_request_time, path_prefix=static_imgs):
         """ Reads images from URLs, saving to hdd.
             If no URLs are given, iterates through discovered image URLs"""
         
@@ -278,7 +325,7 @@ class blog_spider(object):
             
         print('Downloading image files (%d images)' % len(urls))
         
-        if not os.path.exists(static_imgs) and not use_s3:
+        if not os.path.exists(static_imgs) and not self.use_s3:
             os.makedirs(static_imgs)
         
         # using requests to dl images: http://stackoverflow.com/a/13137873
@@ -293,8 +340,8 @@ class blog_spider(object):
             if url.scheme == '':
                 imgurl = 'http:%s' % imgurl
                 
-            fpath = os.path.join(static_imgs, pull.url2filename(imgurl))
-            if not os.path.exists(fpath) or use_s3:
+            fpath = os.path.join(path_prefix, pull.url2filename(imgurl))
+            if (not self.use_s3 and not os.path.exists(fpath)) or (self.use_s3 and not self.dumper.check_exists(self.dumper.get_image_key(fpath))):
                 count = 0
                 while( True ):
                     sys.stdout.write('GET: %s' % imgurl)
@@ -314,7 +361,7 @@ class blog_spider(object):
                         print('\nConnection Error: %s' % e)
                         print('Refreshing session..')
                         self.session = requests.Session()
-                        # self.session.cookies["dayre"] = cookie
+                        pull.set_cookie(self.session)
 
                     if r.status_code >= 500 and r.status_code <= 599 and count < retry_limit:
                         print("500 error downloading images, waiting to retry (attempt {} for {})".format(count, imgurl))
@@ -326,10 +373,8 @@ class blog_spider(object):
                         break
                         
                 if r.status_code == 200:
-                    if use_s3:
-                        b = BytesIO()
-                        shutil.copyfileobj(r.raw, b)
-                        self.dumper.dump_image(b, fpath)
+                    if self.use_s3:
+                        self.dumper.dump_image(r.content, fpath)
                     else:
                         with open(fpath, 'wb') as f:
                             r.raw.decode_content = True

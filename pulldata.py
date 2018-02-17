@@ -18,34 +18,106 @@ next_request_time = datetime.now()
 
 static_imgs = 'images'
 
-# cookie = ""
-
 # control codes: http://stackoverflow.com/a/12586667  # delete previous line print(CURSOR_UP_ONE + ERASE_LINE)
 
 """ Getting URLs """
+
+from urllib.parse import urlparse, parse_qs, urlencode
     
-def find_active_years(soup, session):
+class coo:
+    kies = {}
+    username = ""
+    password = ""
+    
+def set_cookie(session):
+    # session.cookies["dayre"] = cookie
+    for key, val in coo.kies.items():
+        session.cookies[key] = val
+    return
+    
+def set_login(username, password):
+    coo.username = username
+    coo.password = password
+
+def login(session):
+    login_url = "https://dayre.me/login"
+    
+    url_ = urlparse(login_url)
+    qs = parse_qs(url_.query)
+    qs['inputEmail'] = coo.username
+    qs['inputPassword'] = coo.password
+    url_ = url_._replace(query = urlencode(qs, True))
+    login_url = url_.geturl()
+    
+    print("Logging in...")
+    
+    while True:
+        try:
+            r = session.post(login_url)
+        except requests.exceptions.ConnectionError as e:
+            print('\nConnection Error: %s' % e)
+            print('Refreshing session..')
+            session = requests.Session()
+            
+        if r.status_code == 200:
+            coo.kies = r.cookies
+            break
+        elif r.status_code == 400:
+            raise Not200ErrorException(r.status_code, soup.title)
+    
+def find_active_years(soup, session, dumper=None):
     """ Finds years with activity between most recent post and the first year of blog 
         Doesn't add the current year, only the rest. """
-    year_urls = list()
+    year_urls = set()
     year_ = soup.find_all(id='year')
     
     if not year_ or 1 > len(year_):
         print("-- Error getting active year: \"%s\" -- cannot find year element" % soup.title)
         return False
     
-    # append current year, without url (is currently loaded in soup)
-    prev_year = year_[0].a
-    while (prev_year.has_attr('class') and u'disabled' not in prev_year.get('class')):
-        url = prev_year[u'href']
-        year_urls.append(url)
-        prev_year = find_prev_year(url, session)
+    # get the current year, using month URLs
+    # month_soup = soup.find_all(id='months')[0]
+    # for item in month_soup.find_all('li'):
+        # if item.get('class') != None and 'selected' in item.get('class'):
+            # year_urls.add(item.find_all('a')[0].get('href'))
+    
+    # # append current year, without url (is currently loaded in soup)
+    # prev_year = year_[0].a
+    prev_year, next_year = year_[0].find_all('a')
+    
+    while True:
+        # only needs prev_year to iterate, but next_year allows initial year to be included
+        # if next_year.has_attr('class') and u'disabled' not in next_year.get('class'):
+            # year_urls.add(next_year['href'])
+        if prev_year.has_attr('class') and u'disabled' not in prev_year.get('class'):
+            url = prev_year['href']
+            year_urls.add(url)
+        else:
+            break
+        
+        prev_year, next_year = find_adjacent_years(url, session, dumper=dumper)
+    
+    # while (prev_year.has_attr('class') and u'disabled' not in prev_year.get('class')):
+        # url = prev_year['href']
+        # year_urls.add(url)
+        # prev_year = find_prev_year(url, session, dumper=dumper)
     
     return year_urls
+
+def find_adjacent_years(url, session, dumper=None):
+    """Returns the soup tag object for the link to the previous and next years""" 
+    soup = get_soup(url, session, dumper=dumper)
+    year = soup.find_all(id='year')
     
-def find_prev_year(url, session):
+    if not year or 1 > len(year):
+        print("-- Error getting active year: \"%s\" -- cannot find year element" % soup.title)
+        return False
+    
+    return year[0].find_all('a')
+
+def find_prev_year(url, session, dumper=None):
     """Returns the soup tag object for the link to the previous year""" 
-    soup = get_soup(url, session)
+    soup = get_soup(url, session, dumper=dumper)
     year = soup.find_all(id='year')
     
     if not year or 1 > len(year):
@@ -73,11 +145,46 @@ def find_active_months(soup):
             month = next(tag.a.stripped_strings)
             url = tag.a[u'href']
             links.append((month, url))
+            # print(" - {}: {} ".format(tag.text.strip(), url))
             # break  # for testing
     
     return links
     
-def get_soup(url, session, next_request_time=next_request_time):
+def get_text_file(url, next_request_time=next_request_time):
+    """ Pulls arbitrary files """
+    
+    count = 0
+    while( True ):
+        sys.stdout.write('GET: %s' % url)
+        sys.stdout.flush()
+        # Avoid connection error ending everything
+
+        # delay successive requests
+        if datetime.now() < next_request_time:
+            sleep(1)
+        next_request_time = datetime.now() + delay_time
+
+        try:
+            r = requests.get(url)
+        except requests.exceptions.ConnectionError as e:
+            print('\nConnection Error: %s' % e)
+            continue
+        
+        if r.status_code >=200 and r.status_code <=299:
+            break
+        elif count <= retry_limit:
+            print("Not 200 error. Retry connection in 10 seconds code:{} url:{}".format(r.status_code, url))
+            sleep(wait_time)
+            count += 1
+        elif count > retry_limit:
+            break
+    
+    if r.status_code is not 200:
+        raise Not200ErrorException(r.status_code, url)
+        
+    return r.text
+    
+def get_soup(url, session, next_request_time=next_request_time, dumper=None):
     """ Performs error checking before returning the 
         soup object of the given URL """
     
@@ -98,10 +205,19 @@ def get_soup(url, session, next_request_time=next_request_time):
             print('\nConnection Error: %s' % e)
             print('Refreshing session..')
             session = requests.Session()
-            # session.cookies["dayre"] = cookie
+            set_cookie(session)
             continue
         
+        # print( "cookies r:{} s:{}".format( len(r.cookies), len(session.cookies)))
+        # for i in session.cookies:
+        # for i in r.cookies:
+            # print(i)
+        # for i in session.cookies:
+            # print(i)
+            
         if r.status_code >=200 and r.status_code <=299:
+            break
+        elif r.status_code >=400 and r.status_code <=499:
             break
         elif count <= retry_limit:
             print("Not 200 error. Retry connection in 10 seconds code:{} url:{}".format(r.status_code, url))
@@ -115,6 +231,10 @@ def get_soup(url, session, next_request_time=next_request_time):
     if r.status_code is not 200:
         raise Not200ErrorException(r.status_code, soup.title)
 
+    if dumper != None:
+        # save the html
+        dumper.dump_html(soup, url)
+        
     sys.stdout.write(' -- SUCCESS\n')
     sys.stdout.flush()
     return soup
@@ -136,22 +256,26 @@ def get_image_urls(soup):
         img_urls.add(src)  
     return list(img_urls)
     
-def find_day_urls(soup, session):
+def find_day_urls(soup, session, img_list, dumper=None):
     """Iterates through the current month, pulling the links for the days within that month"""
     day_links = list()  # avoid duplicate days
 
     while (True):
         # get the visible days' links
         for tag in soup.find_all('div'):
-            if tag.has_attr('class') and u'summary_container' in tag.get('class'): 
-                # day_links.append((tag.a.text, tag.a.attrs[u'href']))
-                day_links.append(tag.a.attrs[u'href'])
+            if tag.has_attr('class') and 'summary_container' in tag.get('class'): 
+                day_links.append(tag.a.attrs['href'])
+                
+        for tag in set(soup.find_all(id='summaries_inner')[0].find_all('img')):
+            src = tag['src']
+            img_list.add(src)
+            tag['src'] = url2filename(src)
         
         # check for more days
         next_day = soup.find_all(id='load_more_no_js')
         if next_day and len(next_day) > 0:
             url = next_day[0].a[u'href']
-            soup = get_soup(url, session)
+            soup = get_soup(url, session, dumper=dumper)
         else: 
             break # no more days to load
           
