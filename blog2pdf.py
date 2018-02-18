@@ -12,7 +12,10 @@ import textwrap
 import dicttoxml
 from tex_export import data2tex
 import json
+import os
 from touchup_json import PostLinkFixer
+from os import listdir
+from os.path import isfile, join
 
 from makepage import generate_indices
 
@@ -263,14 +266,23 @@ class d2pcli(cmd.Cmd):
     def do_fixjson(self, line):
         ''' converts the links of an exported json to use an s3 bucket and folder structure '''
         if not self.check_user(): return
-        if not self.check_data(): return
+
+        name_in = '{}_data.json'.format(self.username)
+        name_out = 'fixed_{}_data.json'.format(self.username)
         
-        p = PostLinkFixer(bucket_name, self.data)
+        # check json for the current user exists
+        if os.path.exists(name_in):
+            with open(name_in, 'r') as f:
+                jsondata = json.loads(f.read())
+        else:
+            print("user json hasn't been created (try command 'json' first)")
+            return
+        
+        p = PostLinkFixer(bucket_name, jsondata)
         p.fix_links()
-        filename = '{}_data.json'.format(self.data['username'])
-        p.dump_json('fixed_{}'.format(filename))
+        p.dump_json(name_out)
         
-        print("exported fixed json to {}".format(filename))
+        print("exported fixed json to {}".format(name_out))
     
     def do_update(self, line):
         """ Updates the stored data with recent posts """
@@ -337,7 +349,32 @@ class d2pcli(cmd.Cmd):
             f.write(xml)
         
         print('saved as xml file')
+    
+    def do_fixall(self, line):
+        """ fixes all json file in directory """
         
+        onlyfiles = [f for f in listdir(".") if isfile(join(".", f))]
+        
+        for file in onlyfiles:
+            if '_data.json' in file and 'fixed' not in file:
+                username = file.replace("_data.json","")
+                print("running fixjson on {}".format(username))
+                self.do_set(username)
+                self.do_fixjson(None)
+    
+    def do_summaryall(self, line):
+        """ prints all summaries for files in current directory """
+    
+        onlyfiles = [f for f in listdir(".") if isfile(join(".", f))]
+        
+        for file in onlyfiles:
+            if '_data.pickle' in file and 'fixed' not in file:
+                username = file.replace("_data.pickle","")
+                print("\nrunning summary on {}".format(username))
+                self.do_set(username)
+                self.do_load(None)
+                self.do_summary(None)
+    
     def do_json(self, line):
         """ export user data as a json file """
         if not self.check_user(): return
