@@ -315,7 +315,6 @@ class blog_spider(object):
         else:
             self.download_images(urls)
         
-        
     def download_images(self, urls=None, next_request_time=next_request_time, path_prefix=static_imgs):
         """ Reads images from URLs, saving to hdd.
             If no URLs are given, iterates through discovered image URLs"""

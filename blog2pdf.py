@@ -12,6 +12,7 @@ import textwrap
 import dicttoxml
 from tex_export import data2tex
 import json
+from touchup_json import PostLinkFixer
 
 from makepage import generate_indices
 
@@ -192,7 +193,7 @@ class d2pcli(cmd.Cmd):
         self.data = ''
         self.username = ''
         self.selectedday = ''
-        self.use_s3 = False
+        self.use_s3 = True
         
     def check_user(self):
         if self.username == '':
@@ -216,8 +217,9 @@ class d2pcli(cmd.Cmd):
         self.username = username
         print('set user to: %s' % self.username)
         
-    def do_login(self, username, password):
+    def do_login(self, line):
         """ logs in as the given user """
+        username, password = line.split(" ")
         pulldata.set_login(username, password)
         
     def do_uses3(self, line):
@@ -257,6 +259,18 @@ class d2pcli(cmd.Cmd):
         if not self.check_data(): return
         
         # generate_indices(self.data)
+    
+    def do_fixjson(self, line):
+        ''' converts the links of an exported json to use an s3 bucket and folder structure '''
+        if not self.check_user(): return
+        if not self.check_data(): return
+        
+        p = PostLinkFixer(bucket_name, self.data)
+        p.fix_links()
+        filename = '{}_data.json'.format(self.data['username'])
+        p.dump_json('fixed_{}'.format(filename))
+        
+        print("exported fixed json to {}".format(filename))
     
     def do_update(self, line):
         """ Updates the stored data with recent posts """
@@ -331,7 +345,7 @@ class d2pcli(cmd.Cmd):
         
         data_json = get_json( self.data )
         
-        with open('%s_data.json' % self.data['username'], 'w') as f:
+        with open('{}_data.json'.format(self.data['username']), 'w') as f:
             f.write(json.dumps(data_json, indent=4))
         print('saved as json file')
         return
