@@ -19,9 +19,9 @@ class PostLinkFixer:
 
     def __init__(self, bucket_name, data):
         self.bucket_name = bucket_name
-        self.data = data
+        self.data = data  # json data from file
         
-        self.user_prefix = 'http://{}/{}'.format(self.bucket_name, self.data['name'])
+        self.user_prefix = 'http://{}/{}'.format(self.bucket_name, self.data['username'])
         self.image_prefix = '{}/images'.format(self.user_prefix)
         self.video_prefix = '{}/videos'.format(self.user_prefix)
 
@@ -32,6 +32,8 @@ class PostLinkFixer:
         # fix the links in each day's post
         for day in self.data['activity']:
             # change day link?
+            self.fix_day_link(day)
+            
             for post in day['posts']:
                 if 'link' in post:
                     # append with bucket name, username [and folder]
@@ -40,13 +42,13 @@ class PostLinkFixer:
                     elif post['post_type'] == 'User_video':
                         self.fix_video_link(post)
                     
-                    for comment in post['comments']:
-                        self.fix_avatar_link(comment)
+            for comment in day['comments']:
+                self.fix_avatar_link(comment)
         
         # change the follow{er|ing} avatar urls but keep the link to their profile the same
         for follower in self.data['followers']:
             self.fix_avatar_link(follower)
-        for follower in self.data['followering']:
+        for follower in self.data['following']:
             self.fix_avatar_link(follower)
         
         # fix the user's profile avatar link
@@ -56,7 +58,16 @@ class PostLinkFixer:
         """ saves the current json to disk """
 
         with open(filename, "w") as f:
-            f.write(json.dumps(self.data))
+            f.write(json.dumps(self.data, indent=4))
+
+
+    def fix_day_link(self, day):
+        ''' fixes the link to of a day page '''
+        
+        day_link = day['link']
+        url_ = urlparse(day_link)
+        url_ = url_._replace(scheme='http', netloc=self.bucket_name)
+        day['link'] = url_.geturl()
 
 
     def fix_avatar_link(self, item):
@@ -69,8 +80,9 @@ class PostLinkFixer:
         post['link'] = '{}/{}'.format(self.image_prefix, post['link'])
 
 
-    def fix_video_link(self):
+    def fix_video_link(self, post):
         """ fix the link for a video """
+        post['preview_link'] = '{}/{}'.format(self.image_prefix, post['preview_link'])
         post['link'] = '{}/{}'.format(self.video_prefix, post['link'])
 
 
